@@ -1,5 +1,5 @@
-import User from "../models/user.module.js";
-import { ApiError } from "../utils/ApiError.js";
+import { User } from "../models/user.module.js";
+import { ApiError, ApiResponse } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 const signupController = asyncHandler(async (req, res) => {
@@ -19,19 +19,24 @@ const signupController = asyncHandler(async (req, res) => {
   }
 
   // hash Password
-  const salt = await bcrypt.genSalt(10);
-  const hashPassword = await bcrypt.hash(password, salt);
+  // const salt = await bcrypt.genSalt(10);
+  // const hashPassword = await bcrypt.hash(password, salt);
 
-  const newUser = new User({
+  const newUser = await User.create({
     fullName,
     email,
-    password: hashPassword,
+    password,
   });
-  if (newUser) {
-    // generate jwt token here
-  } else {
-    throw new ApiError(400, "Invalid user data");
+
+  const createdUser = await User.findById(newUser._id).select("-password");
+
+  if (!createdUser) {
+    throw ApiError(501, "User not created");
   }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, createdUser, "Signup Successfully"));
 });
 
 const loginController = (req, res) => {
