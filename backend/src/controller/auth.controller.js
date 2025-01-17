@@ -1,6 +1,25 @@
 import { User } from "../models/user.module.js";
-import { ApiError, ApiResponse } from "../utils/ApiError.js";
+import { ApiError } from "../utils/ApiError.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+
+const generateAccessAndRefreshToken = async (userId) => {
+  try {
+    const user = await User.findById(userId);
+    const accessToken = await user.generateAccessToken();
+    const refreshToken = await user.generateRefreshToken();
+
+    user.refreshToken = refreshToken;
+    await user.save({ validateBeforeSave: false });
+
+    return { accessToken, refreshToken };
+  } catch (error) {
+    throw new ApiError(
+      500,
+      "Something wrong while creating access and refresh Token"
+    );
+  }
+};
 
 const signupController = asyncHandler(async (req, res) => {
   const { fullName, email, password } = req.body;
@@ -9,7 +28,7 @@ const signupController = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Some fields are missing.");
   }
 
-  if (password.length() < 5) {
+  if (password.length < 5) {
     throw new ApiError(400, "Password is must be atleast 6 character.");
   }
 
@@ -39,9 +58,53 @@ const signupController = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, createdUser, "Signup Successfully"));
 });
 
-const loginController = (req, res) => {
-  res.send("login route");
-};
+const loginController = asyncHandler(async (req, res) => {
+  const { email, fullName, password } = req.body;
+
+  if (!(fullName || email)) {
+    throw new ApiError(400, "All fields are required");
+  }
+
+  const user = await User.findOne({
+    $or: [{ fullName }, { email }],
+  });
+
+  if (!user) {
+    throw new ApiError(400, "User not exist");
+  }
+
+  const passwordCorrect = await user.isPasswordCorrect(password);
+  if (!passwordCorrect) {
+    throw new ApiError(400, "Invalid User Credentials");
+  }
+
+  const { accessToken, refreshToken } = await generateAccessAndRefreshToken(
+    user._id
+  );
+
+  const loggedInUser = await User.findById(user._id).select(
+    "-password -refreshToken"
+  );
+
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
+
+  return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+      new ApiResponse(200, {
+        user: loggedInUser,
+        accessToken,
+        refreshToken,
+      },
+      "User logged In Successfully"
+    )
+    );
+});
 
 const logoutController = (req, res) => {
   res.send("logout route");
