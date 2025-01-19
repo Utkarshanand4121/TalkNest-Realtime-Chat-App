@@ -1,7 +1,8 @@
-import { User } from "../models/user.module.js";
+import { User } from "../models/user.models.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import cloudinary from "cloudinary";
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
@@ -96,18 +97,78 @@ const loginController = asyncHandler(async (req, res) => {
     .cookie("accessToken", accessToken, options)
     .cookie("refreshToken", refreshToken, options)
     .json(
-      new ApiResponse(200, {
-        user: loggedInUser,
-        accessToken,
-        refreshToken,
-      },
-      "User logged In Successfully"
-    )
+      new ApiResponse(
+        200,
+        {
+          user: loggedInUser,
+          accessToken,
+          refreshToken,
+        },
+        "User logged In Successfully"
+      )
     );
 });
 
-const logoutController = (req, res) => {
-  res.send("logout route");
-};
+const logoutController = asyncHandler(async (req, res) => {
+  await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: {
+        refreshToken: undefined,
+      },
+    },
+    {
+      new: true,
+    }
+  );
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
 
-export { signupController, loginController, logoutController };
+  return res
+    .status(200)
+    .clearCookie("accessToken", options)
+    .clearCookie("refreshToken", options)
+    .json(new ApiResponse(200, {}, "Logout Successfully"));
+});
+
+const updateProfileController = asyncHandler(async (req, res) => {
+  const { profilePic } = req.body;
+  const userId = req.user._id;
+
+  if (!profilePic) {
+    throw new ApiError(400, "Profile Pic is required");
+  }
+
+  const uploadResponse = await cloudinary.uploader.upload(profilePic);
+  const updateUser = await User.findByIdAndUpdate(
+    userId,
+    { profilePic: uploadResponse.secure_url },
+    { new: true }
+  );
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, updateUser, "Profile updated."));
+});
+
+const checkAuth = asyncHandler(async (req, res) => {
+  const authUser = req.user;
+
+  if (!authUser) {
+    throw new ApiError(400, "User not authorized");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, authUser, "User authorized"));
+});
+
+export {
+  signupController,
+  loginController,
+  logoutController,
+  updateProfileController,
+  checkAuth,
+};

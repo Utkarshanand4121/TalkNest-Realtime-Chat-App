@@ -1,12 +1,23 @@
 import express from "express";
-import { loginController, logoutController, signupController } from "../controller/auth.controller.js";
+import {
+  checkAuth,
+  loginController,
+  logoutController,
+  signupController,
+  updateProfileController,
+} from "../controller/auth.controller.js";
+import { verifyJWTUser } from "./../middlewares/user.middlewares.js";
 
 const router = express.Router();
 
-router.post("/signup", signupController)
+router.post("/signup", signupController);
 
-router.post("/login", loginController)
+router.post("/login", loginController);
 
-router.post("/logout", logoutController)
+router.route("/logout").post(verifyJWTUser, logoutController);
+
+router.route("/update-profile").put(verifyJWTUser, updateProfileController);
+
+router.route("/check").get(verifyJWTUser, checkAuth);
 
 export default router;
