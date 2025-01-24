@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useAuthStore } from "../store/useAuthStore.js";
 import AuthImagePattern from "../components/AuthImagePattern";
-import { Eye, EyeOff, Link, Loader2, Lock, Mail, MessageSquare } from "lucide-react";
+import { Eye, EyeOff, Loader2, Lock, Mail, MessageSquare } from "lucide-react";
+import { Link } from "react-router-dom";
+import toast from "react-hot-toast";
 
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -11,9 +13,23 @@ const LoginPage = () => {
   });
   const { login, isLoggingIng } = useAuthStore();
 
+  const validateForm = () => {
+    if (!formData.email.trim()) return toast.error("Email is required");
+    if (!/\S+@\S+\.\S+/.test(formData.email))
+      return toast.error("Invalid Credential");
+
+    if (!formData.password && formData.password.length < 6) {
+      return toast.error("Invalid Credential");
+    }
+
+    return true;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    login(formData);
+
+    const success = validateForm();
+    if (success === true) login(formData);
   };
   return (
     <div className="h-screen grid lg:grid-cols-2">
