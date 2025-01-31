@@ -8,11 +8,14 @@ export const verifyJWTUser = asyncHandler(async (req, _, next) => {
     const token =
       req.cookies?.accessToken ||
       req.header("Authorization")?.replace("Bearer ", "");
+    console.log("Token received:", token); // Debugging
     if (!token) {
-      throw new ApiError(401, "Unauthorized request");
+      throw new ApiError(401, "Unauthorized request - No Token Provided");
     }
 
     const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+    console.log("Decoded Token:", decodedToken); // Debugging
+
     const user = await User.findById(decodedToken?._id).select(
       "-password -refreshToken"
     );
@@ -24,6 +27,7 @@ export const verifyJWTUser = asyncHandler(async (req, _, next) => {
     req.user = user;
     next();
   } catch (error) {
-    throw new ApiError(401, error?.message || "Invalid message");
+    console.error("❌ JWT Verification Error:", error.message);
+    throw new ApiError(401, "Invalid Token");
   }
 });

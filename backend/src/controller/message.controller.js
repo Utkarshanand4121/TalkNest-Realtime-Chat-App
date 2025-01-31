@@ -14,7 +14,7 @@ const getUsersForSidebar = asyncHandler(async (req, res) => {
     _id: { $ne: loggedInUserId },
   }).select("-password");
 
-  return res.status(200).json(200, filteredUsers, "Users fetched successfully");
+  return res.status(200).json(new ApiResponse(200, filteredUsers, "Users fetched successfully"));
 });
 
 const getMessage = asyncHandler(async (req, res) => {

@@ -1,5 +1,5 @@
 import express from "express";
-import { verifyJWTUser } from "../middlewares/user.middlewares.js";
+import { verifyJWTUser } from "../middlewares/auth.middlewares.js";
 import {
   getMessage,
   getUsersForSidebar,

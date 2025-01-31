@@ -6,7 +6,7 @@ import {
   signupController,
   updateProfileController,
 } from "../controller/auth.controller.js";
-import { verifyJWTUser } from "./../middlewares/user.middlewares.js";
+import { verifyJWTUser } from "./../middlewares/auth.middlewares.js";
 
 const router = express.Router();
 

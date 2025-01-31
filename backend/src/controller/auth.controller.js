@@ -123,7 +123,7 @@ const logoutController = asyncHandler(async (req, res) => {
   );
   const options = {
     httpOnly: true,
-    secure: true,
+    secure: process.env.NODE_ENV === "production", // Secure only in production
   };
 
   return res
@@ -133,36 +133,58 @@ const logoutController = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, "Logout Successfully"));
 });
 
-const updateProfileController = asyncHandler(async (req, res) => {
-  const { profilePic } = req.body;
-  const userId = req.user._id;
+const updateProfileController = asyncHandler(async (req, res, next) => {
+  try {
+    console.log("Received request:", req.body);
 
-  if (!profilePic) {
-    throw new ApiError(400, "Profile Pic is required");
+    const { profilePic } = req.body;
+    const userId = req.user?._id; // Ensure userId is extracted correctly
+
+    if (!userId) {
+      console.error("User ID not found in request.");
+      throw new ApiError(401, "Unauthorized");
+    }
+
+    if (!profilePic) {
+      console.error("ProfilePic is missing in request.");
+      throw new ApiError(400, "Profile Pic is required");
+    }
+
+    // Upload to Cloudinary
+    const uploadResponse = await cloudinary.uploader.upload(profilePic);
+    console.log("Cloudinary Upload Response:", uploadResponse);
+
+    // Update user in the database
+    const updateUser = await User.findByIdAndUpdate(
+      userId,
+      { profilePic: uploadResponse.secure_url },
+      { new: true }
+    );
+
+    if (!updateUser) {
+      console.error("User not found in the database.");
+      throw new ApiError(404, "User not found");
+    }
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, updateUser, "Profile updated."));
+  } catch (error) {
+    console.error("Error in updateProfileController:", error);
+    next(error);
   }
-
-  const uploadResponse = await cloudinary.uploader.upload(profilePic);
-  const updateUser = await User.findByIdAndUpdate(
-    userId,
-    { profilePic: uploadResponse.secure_url },
-    { new: true }
-  );
-
-  return res
-    .status(200)
-    .json(new ApiResponse(200, updateUser, "Profile updated."));
 });
+
+
 
 const checkAuth = asyncHandler(async (req, res) => {
   const authUser = req.user;
 
   if (!authUser) {
-    throw new ApiError(400, "User not authorized");
+    throw new ApiError(401, "User not authorized");
   }
 
-  return res
-    .status(200)
-    .json(new ApiResponse(200, authUser, "User authorized"));
+  return res.status(200).json(new ApiResponse(200, authUser, "User authorized"));
 });
 
 export {
