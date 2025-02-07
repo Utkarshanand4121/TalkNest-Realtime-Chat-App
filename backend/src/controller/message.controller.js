@@ -3,7 +3,7 @@ import { User } from "../models/user.models.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import cloudinary from "cloudinary";
+import cloudinary from "../utils/cloudinary.js";
 
 const getUsersForSidebar = asyncHandler(async (req, res) => {
   const loggedInUserId = req.user._id;
@@ -14,7 +14,9 @@ const getUsersForSidebar = asyncHandler(async (req, res) => {
     _id: { $ne: loggedInUserId },
   }).select("-password");
 
-  return res.status(200).json(new ApiResponse(200, filteredUsers, "Users fetched successfully"));
+  return res
+    .status(200)
+    .json(new ApiResponse(200, filteredUsers, "Users fetched successfully"));
 });
 
 const getMessage = asyncHandler(async (req, res) => {
@@ -31,10 +33,13 @@ const getMessage = asyncHandler(async (req, res) => {
       { senderId: usersToChatId, receiverId: myId },
     ],
   });
+  // console.log("Sender ID:", senderId);
+  // console.log("Receiver ID:", receiverId);
+  // console.log("Message Data:", req.body);
 
   return res
     .status(200)
-    .json(new ApiResponse(200, messages, "GetMessages fetched"));
+    .json(new ApiResponse(200, messages || [], "GetMessages fetched"));
 });
 
 const sendMessage = asyncHandler(async (req, res) => {
@@ -44,8 +49,13 @@ const sendMessage = asyncHandler(async (req, res) => {
 
   let imageUrl;
   if (image) {
-    const uploadResponse = await cloudinary.uploader.upload(image);
-    imageUrl = uploadResponse.secure_url;
+    try {
+      const uploadResponse = await cloudinary.uploader.upload(image);
+      imageUrl = uploadResponse.secure_url;
+    } catch (error) {
+      console.error("Cloudinary Upload Error:", error);
+      throw new ApiError(500, "Image upload failed");
+    }
   }
 
   const newMessage = new Message({
@@ -57,11 +67,9 @@ const sendMessage = asyncHandler(async (req, res) => {
 
   await newMessage.save();
 
-  // todo: realtime functionality goes here => socket.io
-
   return res
     .status(201)
-    .json(new ApiResponse(201, newMessage, "Message send succesfully"));
+    .json(new ApiResponse(201, newMessage, "Message sent successfully"));
 });
 
 export { getUsersForSidebar, getMessage, sendMessage };

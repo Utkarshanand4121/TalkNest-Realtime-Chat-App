@@ -31,9 +31,26 @@ export const useChatStore = create((set, get) => ({
     set({ isMessagesLoading: true });
     try {
       const res = await axiosInstance.get(`/messages/${userId}`);
-      set({ messages: res.data });
+
+      console.log("API Response:", res?.data);
+
+      if (!Array.isArray(res?.data?.data)) {
+        console.error("Error: Expected an array but got", res?.data?.data);
+        set({ messages: [] });
+        return;
+      }
+
+      // Ensure all messages have a senderId
+      const messages = res.data.data.map((msg) => ({
+        ...msg,
+        senderId: msg.senderId || "UNKNOWN", // Defaulting to avoid undefined
+      }));
+
+      set({ messages });
     } catch (error) {
+      console.error("Error fetching messages:", error);
       toast.error(error.response?.data?.message || "Failed to load messages");
+      set({ messages: [] });
     } finally {
       set({ isMessagesLoading: false });
     }
@@ -41,14 +58,39 @@ export const useChatStore = create((set, get) => ({
 
   sendMessage: async (messageData) => {
     const { selectedUser, messages } = get();
+
+    // Ensure messages is an array
+    if (!Array.isArray(messages)) {
+      console.error("Error: messages is not an array, resetting it.");
+      set({ messages: [] });
+    }
+
+    if (!selectedUser?._id) {
+      console.error("Error: No selected user.");
+      toast.error("No user selected.");
+      return;
+    }
+
     try {
       const res = await axiosInstance.post(
         `/messages/send/${selectedUser._id}`,
         messageData
       );
-      set({ messages: [...messages, res.data] });
+
+      if (!res?.data?.data) {
+        console.error("Error: No message data received.");
+        toast.error("Failed to send message.");
+        return;
+      }
+
+      console.log("API Response:", res?.data?.data); // Debugging log
+
+      set((state) => ({
+        messages: [...(state.messages || []), res.data.data], // Ensure array
+      }));
     } catch (error) {
-      toast.error(error.response.data.message);
+      console.error("Error sending message:", error);
+      toast.error(error.response?.data?.message || "Failed to send message.");
     }
   },
 
