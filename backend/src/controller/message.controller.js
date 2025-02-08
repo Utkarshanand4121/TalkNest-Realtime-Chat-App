@@ -1,3 +1,4 @@
+import { getReceiverSocketId, io } from "../lib/socket.js";
 import Message from "../models/message.models.js";
 import { User } from "../models/user.models.js";
 import { ApiError } from "../utils/ApiError.js";
@@ -66,6 +67,11 @@ const sendMessage = asyncHandler(async (req, res) => {
   });
 
   await newMessage.save();
+
+  const receiverSocketId = getReceiverSocketId(receiverId);
+  if (receiverSocketId) {
+    io.to(receiverSocketId).emit("newMessage", newMessage);
+  }
 
   return res
     .status(201)
