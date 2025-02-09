@@ -16,15 +16,15 @@ const __dirname = path.resolve();
 
 app.use(express.json());
 app.use(cookieParser());
-app.use(
-  cors({
-    origin: [
-      "http://localhost:5173",
-      "https://talknest-realtime-chatapp.onrender.com",
-    ],
-    credentials: true,
-  })
-);
+
+app.use(cors({
+  origin: "https://talk-nest-realtime-chat-app.vercel.app",
+  credentials: true,
+}));
+
+app.get("/", (req, res) => {
+  res.send("TalkNest Backend is Running!");
+});
 
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoute);
