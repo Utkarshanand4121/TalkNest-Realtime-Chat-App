@@ -18,9 +18,10 @@ app.use(express.json());
 app.use(cookieParser());
 
 app.use(cors({
-  origin: "https://talk-nest-realtime-chat-app.vercel.app",
+  origin: ["https://talk-nest-realtime-chat-app.vercel.app", "https://talk-nest-realtime-chat-app-zsq6.vercel.app"],
   credentials: true,
 }));
+
 
 app.get("/", (req, res) => {
   res.send("TalkNest Backend is Running!");
