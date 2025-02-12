@@ -48,15 +48,33 @@ const signupController = asyncHandler(async (req, res) => {
     password,
   });
 
-  const createdUser = await User.findById(newUser._id).select("-password");
+  const createdUser = await User.findById(newUser._id).select("-password -refreshToken");
+  const {accessToken, refreshToken} = await generateAccessAndRefreshToken(createdUser._id);
 
   if (!createdUser) {
     throw ApiError(501, "User not created");
   }
 
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
+
   return res
     .status(200)
-    .json(new ApiResponse(200, createdUser, "Signup Successfully"));
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+      new ApiResponse(
+        200,
+        {
+          user: createdUser,
+          accessToken,
+          refreshToken,
+        },
+        "Signup Successful & User Logged In"
+      )
+    );
 });
 
 const loginController = asyncHandler(async (req, res) => {

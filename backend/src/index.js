@@ -14,14 +14,20 @@ dotenv.config();
 const PORT = process.env.PORT;
 const __dirname = path.resolve();
 
+app.use(
+  cors({
+    origin: [
+      "https://talk-nest-realtime-chat-app.vercel.app",
+      "https://talk-nest-realtime-chat-app-zsq6.vercel.app",
+      "http://localhost:5173",
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 app.use(cookieParser());
-
-app.use(cors({
-  origin: ["https://talk-nest-realtime-chat-app.vercel.app", "https://talk-nest-realtime-chat-app-zsq6.vercel.app"],
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true,
-}));
 
 
 app.get("/", (req, res) => {
