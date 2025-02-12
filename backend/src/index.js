@@ -19,6 +19,7 @@ app.use(cookieParser());
 
 app.use(cors({
   origin: ["https://talk-nest-realtime-chat-app.vercel.app", "https://talk-nest-realtime-chat-app-zsq6.vercel.app"],
+  methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true,
 }));
 
