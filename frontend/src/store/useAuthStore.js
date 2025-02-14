@@ -5,7 +5,6 @@ import { io } from "socket.io-client";
 
 const BASE_URL = import.meta.env.VITE_API_URL;
 
-
 export const useAuthStore = create((set, get) => ({
   authUser: null,
   isSigningUp: false,
@@ -19,12 +18,8 @@ export const useAuthStore = create((set, get) => ({
     try {
       const res = await axiosInstance.get("/auth/check");
 
-      if (res.data.success) {
-        set({ authUser: res.data.data }); // Extracting only user data
-        get().connectSocket();
-      } else {
-        set({ authUser: null });
-      }
+      set({ authUser: res.data });
+      get().connectSocket();
     } catch (error) {
       console.log("Error in checkAuth:", error);
       set({ authUser: null });
@@ -47,18 +42,27 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
-  login: async (data) => {
-    set({ isLoggingIng: true });
+  login: async (credentials) => {
     try {
-      const res = await axiosInstance.post("/auth/login", data);
-      set({ authUser: res.data });
-      toast.success("Login successfully");
+      const { data } = await axiosInstance.post("/auth/login", credentials);
 
-      get().connectSocket();
+      if (!data || !data.data || !data.data.user || !data.data.accessToken) {
+        throw new Error("Invalid response from server!");
+      }
+
+      // Store tokens and user data
+      localStorage.setItem("authToken", data.data.accessToken);
+      localStorage.setItem("refreshToken", data.data.refreshToken);
+      localStorage.setItem("authUser", JSON.stringify(data.data.user));
+
+      set({ authUser: data.data.user }, () => {
+        get().connectSocket(); // Connect socket AFTER setting user
+      });
+
+      toast.success("Login successful!");
     } catch (error) {
-      toast.error(error.response.data.message);
-    } finally {
-      set({ isLoggingIng: false });
+      console.error("Login failed:", error);
+      toast.error(error?.response?.data?.message || "Login failed");
     }
   },
 
@@ -92,6 +96,7 @@ export const useAuthStore = create((set, get) => ({
   connectSocket: () => {
     const { authUser } = get();
     if (!authUser || get().socket?.connected) return;
+
     const socket = io(BASE_URL, {
       query: {
         userId: authUser._id,
