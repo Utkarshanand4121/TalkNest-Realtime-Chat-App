@@ -12,15 +12,15 @@ export const useChatStore = create((set, get) => ({
 
   getUsers: async () => {
     set({ isUsersLoading: true });
+
     try {
       const res = await axiosInstance.get("/messages/users");
+      console.log("🛠️ Full API Response:", res.data);
+      console.log("🛠️ Headers Sent:", axiosInstance.defaults.headers);
 
-      console.log("Full API response:", res.data);
-
-      // Extract only the array from `res.data.data`
       set({ users: res.data.data || [] });
     } catch (error) {
-      console.error("Error fetching users:", error);
+      console.error("❌ Error fetching users:", error);
       toast.error(error.response?.data?.message || "Failed to load users");
       set({ users: [] });
     } finally {
@@ -102,7 +102,8 @@ export const useChatStore = create((set, get) => ({
     const socket = useAuthStore.getState().socket;
 
     socket.on("newMessage", (newMessage) => {
-      const isMessageSentFromSelectedUser = newMessage.senderId === selectedUser._id;
+      const isMessageSentFromSelectedUser =
+        newMessage.senderId === selectedUser._id;
       if (!isMessageSentFromSelectedUser) return;
       set({
         messages: [...get().messages, newMessage],
