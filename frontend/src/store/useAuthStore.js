@@ -5,6 +5,7 @@ import { io } from "socket.io-client";
 
 const BASE_URL = import.meta.env.VITE_API_URL;
 
+
 export const useAuthStore = create((set, get) => ({
   authUser: null,
   isSigningUp: false,
@@ -15,26 +16,18 @@ export const useAuthStore = create((set, get) => ({
   socket: null,
 
   checkAuth: async () => {
-    const token = localStorage.getItem("token"); // 🔍 Retrieve token
-
-    if (!token) {
-      set({ authUser: null, isCheckingAuth: false });
-      return;
-    }
-
     try {
       const res = await axiosInstance.get("/auth/check");
+
       if (res.data.success) {
-        set({ authUser: res.data.data });
+        set({ authUser: res.data.data }); // Extracting only user data
         get().connectSocket();
       } else {
         set({ authUser: null });
-        localStorage.removeItem("token");
       }
     } catch (error) {
       console.log("Error in checkAuth:", error);
       set({ authUser: null });
-      localStorage.removeItem("token");
     } finally {
       set({ isCheckingAuth: false });
     }
@@ -44,22 +37,11 @@ export const useAuthStore = create((set, get) => ({
     set({ isSigningUp: true });
     try {
       const res = await axiosInstance.post("/auth/signup", data);
-
-      // Extract token from response
-      const { token, user } = res.data;
-
-      if (token) {
-        localStorage.setItem("token", token); // 🔐 Store token
-        axiosInstance.defaults.headers.common[
-          "Authorization"
-        ] = `Bearer ${token}`; // Attach token globally
-      }
-
-      set({ authUser: user });
+      set({ authUser: res.data });
       toast.success("Account created successfully");
       get().connectSocket();
     } catch (error) {
-      toast.error(error.response?.data?.message || "Signup failed");
+      toast.error(error.response.data.message);
     } finally {
       set({ isSigningUp: false });
     }
@@ -69,22 +51,12 @@ export const useAuthStore = create((set, get) => ({
     set({ isLoggingIng: true });
     try {
       const res = await axiosInstance.post("/auth/login", data);
+      set({ authUser: res.data });
+      toast.success("Login successfully");
 
-      // Extract token from response
-      const { token, user } = res.data;
-
-      if (token) {
-        localStorage.setItem("token", token); // 🔐 Store token
-        axiosInstance.defaults.headers.common[
-          "Authorization"
-        ] = `Bearer ${token}`; // Attach token globally
-      }
-
-      set({ authUser: user });
-      toast.success("Login successful");
       get().connectSocket();
     } catch (error) {
-      toast.error(error.response?.data?.message || "Login failed");
+      toast.error(error.response.data.message);
     } finally {
       set({ isLoggingIng: false });
     }
@@ -93,14 +65,11 @@ export const useAuthStore = create((set, get) => ({
   logout: async () => {
     try {
       await axiosInstance.post("/auth/logout");
-      localStorage.removeItem("token"); // ❌ Remove token
-      delete axiosInstance.defaults.headers.common["Authorization"]; // Clear token from headers
-
       set({ authUser: null });
       toast.success("Logged out successfully");
       get().disconnectSocket();
     } catch (error) {
-      toast.error(error.response?.data?.message || "Logout failed");
+      toast.error(error.response.data.message);
     }
   },
 
